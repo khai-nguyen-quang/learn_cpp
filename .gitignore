@@ -1,0 +1,6 @@
+.vscode/
+MODULE.bazel.lock
+bazel-bin
+bazel-learn_cpp
+bazel-out
+bazel-testlogs
