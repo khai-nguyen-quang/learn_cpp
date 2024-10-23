@@ -5,9 +5,9 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <future>
 
 #include "threadsafe_queue.hpp"
-#include "join_threads.hpp"
 
 using namespace std;
 
@@ -16,12 +16,14 @@ using namespace std;
     User submits tasks into work_queue_
     Threads in threads_pool_ keep getting tasks stored in work_queue_ then execute them
 */
+template<typename FuncType>
 class ThreadPool {
 
 public: 
     ThreadPool() :
-        num_threads_{0},
-        complete_(false)
+        complete_(false),
+        num_threads_{0}
+        
     {
         try {
             num_threads_ = thread::hardware_concurrency();
@@ -41,9 +43,14 @@ public:
             }            
         }
     }
-    
-    void submit (function<void()> f) {
-        work_queue_.push(f);
+
+    auto submit (const function<FuncType>& func) {
+        packaged_task<FuncType> task(func);
+
+        auto fut = task.get_future();
+        work_queue_.push(move(task));
+
+        return fut;
     }
 
     uint32_t num_threads() const {
@@ -57,8 +64,8 @@ private:
     void work_thread(){
         // pop a task being stored in work_queue_ then execute it.
         while(complete_ == false) {
-            function<void()> task;
-            if (work_queue_.try_pop(task)) {
+            packaged_task<FuncType> task;
+            if (work_queue_.try_pop_movable(task)) {
                 task();
             } else {
                 this_thread::yield();
@@ -77,6 +84,7 @@ private:
 
     vector<thread> threads_;
     atomic_bool complete_;
-    ThreadSafeQueue<function<void()>> work_queue_;
+
+    ThreadSafeQueue<packaged_task<FuncType>> work_queue_;
     uint32_t num_threads_;
 };
