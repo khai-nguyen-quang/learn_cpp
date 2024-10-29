@@ -7,6 +7,9 @@
 
 using namespace std;
 
+/*
+    NOTE: This ThreadSafeQueue only supports copy-able type objects
+*/
 template <typename T>
 class ThreadSafeQueue {
 
@@ -30,7 +33,7 @@ public :
 
     void push(T&& new_value) {
         lock_guard<mutex> lk(mx_queue_);
-        data_queue_.push(std::move(new_value));
+        data_queue_.push(move(new_value));
 
         cv_queue_.notify_all();
     }
@@ -63,17 +66,6 @@ public :
         if (data_queue_.empty()) return false;
 
         value = data_queue_.front();
-        data_queue_.pop();
-        return true;
-    }
-
-    bool try_pop_movable(T& value)
-    {
-        lock_guard<mutex> lk(mx_queue_);
-
-        if (data_queue_.empty()) return false;
-
-        value = std::move(data_queue_.front());
         data_queue_.pop();
         return true;
     }

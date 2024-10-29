@@ -5,6 +5,7 @@
 using namespace std;
 
 void main_threadpool() {
+
     ThreadPool<int()> thread_pool{};
     ThreadSafeQueue<string> log_queue{};
 
@@ -16,7 +17,7 @@ void main_threadpool() {
 
     // Reserve 1 task to print log message from other tasks
     atomic_bool stop(false);
-    function<int()> task_print_log([&log_queue, &stop] -> int{
+    function<int()> task_print_log([&log_queue, &stop]() -> int{
         while(!stop) {
             string msg;
             if (log_queue.try_pop(msg)) {
@@ -30,7 +31,7 @@ void main_threadpool() {
 
     for(uint32_t i=0; i < max_tasks; i++) {
         // create a task to do something
-        function<int()> task([&log_queue, i] -> int{
+        function<int()> task([&log_queue, i]() -> int{
             string msg = "Task " + to_string(i) + " running...";
             log_queue.push(msg);
             this_thread::sleep_for(chrono::milliseconds(100));

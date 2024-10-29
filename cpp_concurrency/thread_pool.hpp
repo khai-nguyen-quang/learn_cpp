@@ -16,6 +16,54 @@ using namespace std;
     User submits tasks into work_queue_
     Threads in threads_pool_ keep getting tasks stored in work_queue_ then execute them
 */
+
+/*
+    TaskType is a type that wraps a function.
+    TaskType is copy-able type which can be added to ThreadSafeQueue
+*/
+
+template <typename FuncType> 
+struct TaskType {
+    shared_ptr<packaged_task<FuncType>> task;
+
+    TaskType(function<FuncType>& f)
+    {
+        task = make_shared<packaged_task<FuncType>>(packaged_task<FuncType>(f));
+    }
+
+    TaskType() = default;
+
+    // unsupport move constructor/operator
+    TaskType(TaskType&& other) = delete;
+    TaskType& operator=(TaskType&& other) = delete;
+
+    // support copy constructor/operator
+    TaskType(const TaskType& other) : 
+        task(other.task) 
+    {}
+
+    TaskType(TaskType& other) : 
+        task(other.task)
+    {}
+
+    TaskType& operator=(const TaskType& other)
+    {
+        task = other.task;
+        return *this;
+    }
+
+    void operator()(){
+        if (task) {
+            (*task)();
+        }
+    }
+
+    typedef invoke_result_t<FuncType> FuncRetType;
+    future<FuncRetType> get_future() const {
+        return (*task).get_future();
+    }
+};
+
 template<typename FuncType>
 class ThreadPool {
 
@@ -44,11 +92,12 @@ public:
         }
     }
 
-    auto submit (const function<FuncType>& func) {
-        packaged_task<FuncType> task(func);
-
-        auto fut = task.get_future();
-        work_queue_.push(move(task));
+    typedef  std::invoke_result_t<FuncType> FuncRetType;
+    future<FuncRetType> submit (function<FuncType> task_) {
+        
+        TaskType<FuncType> task(task_);
+        future<FuncRetType> fut = task.get_future();
+        work_queue_.push(task);
 
         return fut;
     }
@@ -64,8 +113,8 @@ private:
     void work_thread(){
         // pop a task being stored in work_queue_ then execute it.
         while(complete_ == false) {
-            packaged_task<FuncType> task;
-            if (work_queue_.try_pop_movable(task)) {
+            TaskType<FuncType> task;
+            if (work_queue_.try_pop(task)) {
                 task();
             } else {
                 this_thread::yield();
@@ -85,6 +134,6 @@ private:
     vector<thread> threads_;
     atomic_bool complete_;
 
-    ThreadSafeQueue<packaged_task<FuncType>> work_queue_;
+    ThreadSafeQueue<TaskType<FuncType>> work_queue_;
     uint32_t num_threads_;
 };
