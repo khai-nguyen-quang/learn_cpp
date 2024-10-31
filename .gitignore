@@ -4,3 +4,5 @@ bazel-bin
 bazel-learn_cpp
 bazel-out
 bazel-testlogs
+*.out
+*.o

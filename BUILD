@@ -6,7 +6,8 @@ cc_binary(
         "//hello:hello", 
         "//dynamic_prog:dynamic_prog", 
         "//stack_problems:stack_problems",
-        "//hash_table_problems:hash_table_problems", 
+        "//hash_table_problems:hash_table_problems",
+        "//graph_problems:graph_problems",
         "//cpp_concurrency:cpp_concurrency"
     ],
 )
